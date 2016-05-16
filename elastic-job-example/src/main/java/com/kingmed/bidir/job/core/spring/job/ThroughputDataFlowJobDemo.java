@@ -17,9 +17,9 @@
 
 package com.kingmed.bidir.job.core.spring.job;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+
+import javax.annotation.Resource;
 
 import org.springframework.stereotype.Component;
 
@@ -28,27 +28,28 @@ import com.dangdang.ddframe.job.plugin.job.type.dataflow.AbstractIndividualThrou
 import com.dangdang.example.elasticjob.utils.PrintContext;
 
 @Component
-public class ThroughputDataFlowJobDemo extends AbstractIndividualThroughputDataFlowElasticJob<String> {
+public class ThroughputDataFlowJobDemo extends AbstractIndividualThroughputDataFlowElasticJob<Foo> {
     
     private PrintContext printContext = new PrintContext(ThroughputDataFlowJobDemo.class);
         
+    @Resource
+    private FooRepository fooRepository;
+    
     @Override
-    public List<String> fetchData(final JobExecutionMultipleShardingContext context) {
+    public List<Foo> fetchData(final JobExecutionMultipleShardingContext context) {
         printContext.printFetchDataMessage(context.getShardingItems());
-        List<String> re = new ArrayList<String>();
-        re.add("hello");
-        re.add("world");
-        Map<Integer, String> shardingItemParams = context.getShardingItemParameters();
-        for(Integer key: shardingItemParams.keySet()) {
-        	System.out.println(key + " = " + shardingItemParams.get(key));
-        }
-        return re;
+        return fooRepository.findActive(context.getShardingItems());
     }
     
     @Override
-    public boolean processData(final JobExecutionMultipleShardingContext context, final String data) {
+    public boolean processData(final JobExecutionMultipleShardingContext context, final Foo data) {
         printContext.printProcessDataMessage(data);
-        System.out.println(data);
+        if (9 == data.getId() % 10) {
+            return false;
+        }
+        fooRepository.setInactive(data.getId());
+        
+        
         return true;
     }
     
